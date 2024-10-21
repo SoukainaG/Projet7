@@ -1,0 +1,47 @@
+name: Build and Deploy API
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run unit tests
+      run: python -m unittest
+
+    - name: Build Docker image
+      run: docker build -t myapi:latest .
+
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: <azure_registry>.azurecr.io
+        username: ${{ secrets.AZURE_USERNAME }}
+        password: ${{ secrets.AZURE_PASSWORD }}
+
+    - name: Push Docker image
+      run: |
+        docker tag myapi:latest <azure_registry>.azurecr.io/myapi:latest
+        docker push <azure_registry>.azurecr.io/myapi:latest
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: <azure_app_service_name>
+        images: <azure_registry>.azurecr.io/myapi:latest
